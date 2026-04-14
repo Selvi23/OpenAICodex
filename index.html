@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>StorageRent Pricing Calculator</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1c2735;
+      --muted: #5e6c84;
+      --primary: #2d5bff;
+      --primary-hover: #2248cc;
+      --border: #d9e1ec;
+      --good: #1f8a4c;
+      --warn: #a35a00;
+      --shadow: 0 12px 30px rgba(20, 40, 80, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.4;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 28px 14px;
+    }
+
+    .app {
+      width: min(900px, 100%);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 24px 28px 10px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.6rem;
+      letter-spacing: 0.3px;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.96rem;
+    }
+
+    .content {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      padding: 22px 28px 28px;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 1.02rem;
+    }
+
+    .field { margin-bottom: 12px; }
+    .field:last-child { margin-bottom: 0; }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+      color: #32455f;
+    }
+
+    input, select, button {
+      width: 100%;
+      font: inherit;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      background: #fff;
+      color: var(--text);
+    }
+
+    input:focus, select:focus, button:focus {
+      outline: 2px solid rgba(45, 91, 255, 0.25);
+      outline-offset: 1px;
+      border-color: var(--primary);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-primary:hover { background: var(--primary-hover); }
+
+    .btn-secondary {
+      background: #fff;
+      color: var(--primary);
+      border-color: #b8c7ff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-secondary:hover { background: #f5f8ff; }
+
+    .help {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 8px;
+    }
+
+    .result {
+      min-height: 260px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .result .big {
+      font-size: 1.9rem;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .breakdown {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .breakdown li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-top: 1px solid var(--border);
+      font-size: 0.92rem;
+    }
+
+    .breakdown li:first-child { border-top: none; }
+
+    .positive { color: var(--good); }
+    .warning { color: var(--warn); }
+
+    .ai-box {
+      border: 1px dashed #bfd0ff;
+      background: #f9fbff;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.92rem;
+      color: #2b3f64;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 640px) {
+      .header, .content { padding-left: 16px; padding-right: 16px; }
+      .button-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <h1>StorageRent Pricing Calculator</h1>
+      <p class="subtitle">Estimate rental cost by unit size, rental length, seasonality, and discounts.</p>
+    </header>
+
+    <section class="content">
+      <div class="panel">
+        <h2>Rental details</h2>
+
+        <div class="field">
+          <label for="unitSize">Unit size</label>
+          <select id="unitSize">
+            <option value="Small">Small</option>
+            <option value="Medium">Medium</option>
+            <option value="Large">Large</option>
+            <option value="XL">XL</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="days">Number of rental days</label>
+          <input id="days" type="number" min="1" value="7" />
+        </div>
+
+        <div class="field">
+          <label for="startDate">Start date</label>
+          <input id="startDate" type="date" />
+        </div>
+
+        <div class="field">
+          <label for="promoCode">Promo code (optional)</label>
+          <input id="promoCode" type="text" placeholder="FIRST30 or LONGTERM" />
+        </div>
+
+        <div class="button-row">
+          <button id="calcBtn" class="btn-primary" type="button">Calculate</button>
+          <button id="aiBtn" class="btn-secondary" type="button">AI Recommendation</button>
+        </div>
+        <p class="help">Promo codes: <strong>FIRST30</strong> (30% off), <strong>LONGTERM</strong> (12% off for 30+ days).</p>
+      </div>
+
+      <div class="panel result">
+        <h2>Price breakdown</h2>
+        <div class="big" id="finalPrice">$0.00</div>
+        <ul class="breakdown" id="breakdownList"></ul>
+        <div class="ai-box" id="aiResponse">AI tip will appear here when you click “AI Recommendation”.</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const API_KEY = "";
+
+    const sizeDailyRates = {
+      Small: 24,
+      Medium: 38,
+      Large: 56,
+      XL: 79
+    };
+
+    const startDateInput = document.getElementById("startDate");
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    startDateInput.value = `${yyyy}-${mm}-${dd}`;
+
+    function daysBetween(a, b) {
+      const dayMs = 24 * 60 * 60 * 1000;
+      const utcA = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+      const utcB = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+      return Math.floor((utcB - utcA) / dayMs);
+    }
+
+    function getLongRentalDiscountPct(days) {
+      if (days >= 30) return 0.25;
+      if (days >= 14) return 0.15;
+      if (days >= 7) return 0.08;
+      return 0;
+    }
+
+    function getSeasonSurchargePct(startDate) {
+      const month = startDate.getMonth() + 1;
+      if (month >= 6 && month <= 8) return 0.15;
+      return 0;
+    }
+
+    function getEarlyBookingDiscountPct(daysInAdvance) {
+      if (daysInAdvance >= 30) return 0.10;
+      if (daysInAdvance >= 14) return 0.05;
+      return 0;
+    }
+
+    function getPromoDiscountPct(code, days) {
+      if (!code) return { pct: 0, note: "No promo code" };
+      const cleaned = code.trim().toUpperCase();
+      if (cleaned === "FIRST30") return { pct: 0.30, note: "FIRST30 applied" };
+      if (cleaned === "LONGTERM") {
+        if (days >= 30) return { pct: 0.12, note: "LONGTERM applied" };
+        return { pct: 0, note: "LONGTERM requires at least 30 days" };
+      }
+      return { pct: 0, note: `Promo code “${cleaned}” not recognized` };
+    }
+
+    function formatMoney(value) {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD"
+      }).format(value);
+    }
+
+    function addLine(listEl, label, value, className) {
+      const li = document.createElement("li");
+      if (className) li.classList.add(className);
+      const left = document.createElement("span");
+      left.textContent = label;
+      const right = document.createElement("strong");
+      right.textContent = value;
+      li.append(left, right);
+      listEl.appendChild(li);
+    }
+
+    function calculatePrice() {
+      const unitSize = document.getElementById("unitSize").value;
+      const days = Number(document.getElementById("days").value);
+      const startDateRaw = document.getElementById("startDate").value;
+      const promoCode = document.getElementById("promoCode").value;
+      const breakdownList = document.getElementById("breakdownList");
+      breakdownList.innerHTML = "";
+
+      if (!startDateRaw || Number.isNaN(days) || days < 1) {
+        addLine(breakdownList, "Input error", "Please enter a valid date and rental days.", "warning");
+        document.getElementById("finalPrice").textContent = "$0.00";
+        return null;
+      }
+
+      const startDate = new Date(`${startDateRaw}T00:00:00`);
+      const dailyRate = sizeDailyRates[unitSize];
+      const baseCost = dailyRate * days;
+
+      const longPct = getLongRentalDiscountPct(days);
+      const longDiscount = baseCost * longPct;
+
+      const seasonPct = getSeasonSurchargePct(startDate);
+      const summerSurcharge = (baseCost - longDiscount) * seasonPct;
+
+      const advanceDays = daysBetween(today, startDate);
+      const earlyPct = getEarlyBookingDiscountPct(Math.max(0, advanceDays));
+      const earlyDiscount = (baseCost - longDiscount + summerSurcharge) * earlyPct;
+
+      const promo = getPromoDiscountPct(promoCode, days);
+      const subtotalBeforePromo = baseCost - longDiscount + summerSurcharge - earlyDiscount;
+      const promoDiscount = subtotalBeforePromo * promo.pct;
+
+      const finalPrice = Math.max(0, subtotalBeforePromo - promoDiscount);
+
+      addLine(breakdownList, `Base price (${unitSize} @ ${formatMoney(dailyRate)}/day × ${days} days)`, formatMoney(baseCost));
+      addLine(breakdownList, `Long rental discount (${Math.round(longPct * 100)}%)`, `-${formatMoney(longDiscount)}`, "positive");
+      addLine(breakdownList, `Summer surcharge (${Math.round(seasonPct * 100)}%)`, `+${formatMoney(summerSurcharge)}`);
+      addLine(breakdownList, `Early booking discount (${Math.round(earlyPct * 100)}% | ${Math.max(0, advanceDays)} days ahead)`, `-${formatMoney(earlyDiscount)}`, "positive");
+      addLine(breakdownList, `${promo.note} (${Math.round(promo.pct * 100)}%)`, `-${formatMoney(promoDiscount)}`, promo.pct > 0 ? "positive" : "warning");
+      addLine(breakdownList, "Final price", formatMoney(finalPrice));
+
+      document.getElementById("finalPrice").textContent = formatMoney(finalPrice);
+
+      return {
+        unitSize,
+        days,
+        startDate: startDateRaw,
+        promoCode: promoCode.trim().toUpperCase() || "NONE",
+        baseCost,
+        finalPrice,
+        discounts: {
+          longPct,
+          earlyPct,
+          promoPct: promo.pct
+        },
+        summerSurcharge
+      };
+    }
+
+    async function getAIRecommendation() {
+      const aiBox = document.getElementById("aiResponse");
+      const details = calculatePrice();
+
+      if (!details) {
+        aiBox.textContent = "Please fix input errors before requesting an AI recommendation.";
+        return;
+      }
+
+      if (!API_KEY) {
+        aiBox.textContent = "Add your Anthropic API key in const API_KEY = \"\" to enable AI recommendations.";
+        return;
+      }
+
+      aiBox.textContent = "Contacting Anthropic API for recommendation...";
+
+      const prompt = `You are helping a storage rental customer optimize pricing. Given: ${JSON.stringify(details)}. Suggest the best cost-saving options in 3 bullet points.`;
+
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": API_KEY,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: "claude-3-5-haiku-latest",
+            max_tokens: 220,
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          aiBox.textContent = `AI request failed (${response.status}): ${errText}`;
+          return;
+        }
+
+        const data = await response.json();
+        const text = (data.content && data.content[0] && data.content[0].text) || "No recommendation returned.";
+        aiBox.textContent = text;
+      } catch (err) {
+        aiBox.textContent = `Unable to reach Anthropic API: ${err.message}`;
+      }
+    }
+
+    document.getElementById("calcBtn").addEventListener("click", calculatePrice);
+    document.getElementById("aiBtn").addEventListener("click", getAIRecommendation);
+
+    calculatePrice();
+  </script>
+</body>
+</html>
