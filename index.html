@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Storage Unit Pricing</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background: #f6f8fb;
+      color: #111827;
+    }
+
+    .card {
+      max-width: 860px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 12px 30px rgba(17, 24, 39, 0.08);
+      padding: 1.5rem;
+    }
+
+    h1 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-size: 1.6rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.9rem;
+      align-items: end;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-size: 0.92rem;
+      color: #374151;
+    }
+
+    input,
+    select,
+    button {
+      padding: 0.62rem 0.7rem;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font: inherit;
+    }
+
+    button {
+      background: #2563eb;
+      color: white;
+      border-color: #2563eb;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    .result-panel {
+      margin-top: 1.2rem;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 1rem;
+      background: #fafafa;
+      display: none;
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    .result-panel.show {
+      display: block;
+      animation: slideIn 320ms ease-out forwards;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .totals {
+      display: grid;
+      gap: 0.25rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .price {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .breakdown {
+      margin: 0.6rem 0 0;
+      padding-left: 1.1rem;
+    }
+
+    .breakdown li {
+      margin-bottom: 0.3rem;
+    }
+
+    .saving {
+      color: #15803d;
+    }
+
+    .surcharge {
+      color: #c2410c;
+    }
+
+    .features {
+      margin-top: 0.85rem;
+      padding: 0.85rem;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+    }
+
+    .reserve {
+      margin-top: 0.95rem;
+      background: #059669;
+      border-color: #059669;
+      width: 100%;
+    }
+
+    .reserve:hover {
+      background: #047857;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Storage Unit Price Calculator</h1>
+    <div class="grid">
+      <label>
+        Unit size
+        <select id="unitSize">
+          <option value="small">Small</option>
+          <option value="medium">Medium</option>
+          <option value="large">Large</option>
+          <option value="xl">XL</option>
+        </select>
+      </label>
+      <label>
+        Number of days
+        <input id="days" type="number" min="1" value="30" />
+      </label>
+      <label>
+        Start date
+        <input id="startDate" type="date" />
+      </label>
+      <label>
+        Promo code
+        <input id="promo" type="text" placeholder="FIRST30 or LONGTERM" />
+      </label>
+      <button id="calculateBtn" type="button">Calculate Price</button>
+    </div>
+
+    <section id="results" class="result-panel" aria-live="polite">
+      <div class="totals">
+        <div id="pricePerDay"></div>
+        <div id="totalPrice" class="price"></div>
+      </div>
+      <strong>Pricing breakdown</strong>
+      <ul id="breakdownList" class="breakdown"></ul>
+      <div class="features">
+        <strong>Unit features</strong>
+        <ul id="featuresList"></ul>
+      </div>
+      <button type="button" class="reserve" id="reserveBtn">Reserve This Unit</button>
+    </section>
+  </div>
+
+  <script>
+    const ratesBySize = {
+      small: 12,
+      medium: 22,
+      large: 38,
+      xl: 55
+    };
+
+    const featuresBySize = {
+      small: ["5x5 footprint", "Drive-up access", "Ideal for boxes & seasonal items"],
+      medium: ["10x10 footprint", "Indoor climate options", "Fits 1-bedroom contents"],
+      large: ["10x20 footprint", "Wide door clearance", "Great for business inventory"],
+      xl: ["10x30 footprint", "Priority security zone", "Fits large furniture & equipment"]
+    };
+
+    const surgeMonths = new Set([5, 6, 7, 11]); // June, July, August, December
+
+    const currency = (value) =>
+      new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+
+    const today = new Date();
+    const defaultStart = new Date(today);
+    defaultStart.setDate(defaultStart.getDate() + 7);
+    document.getElementById("startDate").value = defaultStart.toISOString().split("T")[0];
+
+    function calculatePrice() {
+      const size = document.getElementById("unitSize").value;
+      const days = Math.max(1, parseInt(document.getElementById("days").value, 10) || 1);
+      const startDateValue = document.getElementById("startDate").value;
+      const promoCode = document.getElementById("promo").value.trim().toUpperCase();
+      const startDate = startDateValue ? new Date(startDateValue + "T00:00:00") : new Date();
+
+      const baseRate = ratesBySize[size];
+      let subtotal = baseRate * days;
+      const breakdown = [];
+
+      breakdown.push({
+        label: `Base price (${currency(baseRate)} × ${days} days)`,
+        amount: subtotal,
+        type: "base"
+      });
+
+      // Length-of-stay discount
+      if (days >= 90) {
+        const discount = subtotal * 0.2;
+        subtotal -= discount;
+        breakdown.push({ label: "90+ day discount (20% off)", amount: -discount, type: "saving" });
+      } else if (days >= 30) {
+        const discount = subtotal * 0.1;
+        subtotal -= discount;
+        breakdown.push({ label: "30+ day discount (10% off)", amount: -discount, type: "saving" });
+      }
+
+      // Seasonal surge by start month
+      if (surgeMonths.has(startDate.getMonth())) {
+        const surcharge = subtotal * 0.3;
+        subtotal += surcharge;
+        breakdown.push({ label: "Peak season surge (1.3×)", amount: surcharge, type: "surcharge" });
+      }
+
+      // Early bird
+      const minEarlyBirdDate = new Date(today);
+      minEarlyBirdDate.setHours(0, 0, 0, 0);
+      minEarlyBirdDate.setDate(minEarlyBirdDate.getDate() + 30);
+      if (startDate >= minEarlyBirdDate) {
+        const discount = subtotal * 0.05;
+        subtotal -= discount;
+        breakdown.push({ label: "Early bird discount (start date 30+ days out, 5% off)", amount: -discount, type: "saving" });
+      }
+
+      // Promo codes
+      if (promoCode === "FIRST30") {
+        const discount = subtotal * 0.15;
+        subtotal -= discount;
+        breakdown.push({ label: "Promo FIRST30 (15% off)", amount: -discount, type: "saving" });
+      } else if (promoCode === "LONGTERM") {
+        if (days >= 90) {
+          const discount = subtotal * 0.1;
+          subtotal -= discount;
+          breakdown.push({ label: "Promo LONGTERM (10% off for 90+ days)", amount: -discount, type: "saving" });
+        } else {
+          breakdown.push({ label: "Promo LONGTERM not applied (requires 90+ days)", amount: 0, type: "base" });
+        }
+      } else if (promoCode.length > 0) {
+        breakdown.push({ label: `Promo ${promoCode} not recognized`, amount: 0, type: "base" });
+      }
+
+      const finalTotal = Math.max(0, subtotal);
+      const finalPerDay = finalTotal / days;
+
+      const results = document.getElementById("results");
+      const breakdownList = document.getElementById("breakdownList");
+      const featuresList = document.getElementById("featuresList");
+
+      document.getElementById("pricePerDay").textContent = `Price per day: ${currency(finalPerDay)}`;
+      document.getElementById("totalPrice").textContent = `Total price: ${currency(finalTotal)}`;
+
+      breakdownList.innerHTML = "";
+      breakdown.forEach((entry) => {
+        const li = document.createElement("li");
+        if (entry.type === "saving") {
+          li.className = "saving";
+        } else if (entry.type === "surcharge") {
+          li.className = "surcharge";
+        }
+
+        const prefix = entry.amount > 0 ? "+" : "";
+        const amountText = entry.amount !== 0 ? ` (${prefix}${currency(entry.amount)})` : "";
+        li.textContent = `${entry.label}${amountText}`;
+        breakdownList.appendChild(li);
+      });
+
+      featuresList.innerHTML = "";
+      featuresBySize[size].forEach((feature) => {
+        const li = document.createElement("li");
+        li.textContent = feature;
+        featuresList.appendChild(li);
+      });
+
+      results.classList.remove("show");
+      void results.offsetWidth;
+      results.classList.add("show");
+    }
+
+    document.getElementById("calculateBtn").addEventListener("click", calculatePrice);
+    document.getElementById("reserveBtn").addEventListener("click", () => {
+      alert("Reservation started. A team member will contact you shortly.");
+    });
+  </script>
+</body>
+</html>
